@@ -1,0 +1,61 @@
+name: Xclipse 940 Wrapper Build & Feature Dump
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - main
+
+jobs:
+  build-wrapper:
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Checkout Repository
+      uses: actions/checkout@v4
+
+    - name: Install Dependencies
+      run: |
+        sudo apt update
+        sudo apt install -y cmake ninja-build clang pkg-config
+
+    - name: Configure Build
+      run: |
+        mkdir -p build
+        cd build
+        cmake \
+          -G Ninja \
+          -DCMAKE_BUILD_TYPE=Release \
+          -DXCLIPSE_ENABLE_LOGGING=ON \
+          -DXCLIPSE_ENABLE_FEATURE_DUMP=ON \
+          -DXCLIPSE_ENABLE_PIPELINE_VALIDATION=ON \
+          -DXCLIPSE_ENABLE_BC_FALLBACK=ON \
+          ..
+
+    - name: Build Wrapper
+      run: |
+        cd build
+        ninja
+
+    - name: Run Feature / Capability Generator
+      run: |
+        cd build
+        # this runs the dummy generator provided in repo
+        # on real device you will run the .so via Winlator or loader
+        ./xclipse_feature_dump_generator || true
+
+    - name: Collect Logs & Feature Dumps
+      run: |
+        mkdir -p output_bundle
+        cp -r build/*.so output_bundle/ || true
+        cp -r build/logs output_bundle/ || true
+        cp -r build/feature_dump.txt output_bundle/ || true
+        cp manifest.json output_bundle/ || true
+        cp README.md output_bundle/ || true
+        zip -r xclipse_output_bundle.zip output_bundle
+
+    - name: Upload Build + Logs Artifact
+      uses: actions/upload-artifact@v4
+      with:
+        name: xclipse-940-wrapper-logs-and-build
+        path: xclipse_output_bundle.zip
