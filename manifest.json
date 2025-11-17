@@ -9,13 +9,11 @@
     "async_compile": true,
     "auto_tuning": true,
     "hud_overlay": true,
-
     "ray_tracing": false,
     "mesh_shading": true,
     "variable_rate_shading": true,
     "primitive_shaders": true,
     "shader_execution_reordering": true,
-
     "descriptor_indexing": true,
     "buffer_device_address": true,
     "timeline_semaphores": true,
@@ -29,7 +27,6 @@
     "shader_atomic_int64": false,
     "shader_float16_int8": true,
     "dual_issue_fp32_fp16": false,
-
     "synchronization2": true,
     "memory_budget": true,
     "delta_color_compression": true,
@@ -38,11 +35,9 @@
     "cooperative_matrix": false,
     "wave_matrix_ops": false,
     "multi_queue_async": true,
-
     "opengl_es_3_2": true,
     "opencl_compute": false,
     "directx12_layer": false,
-
     "bc_texture_formats": {
       "BC1": "hardware",
       "BC2": "hardware",
@@ -53,13 +48,11 @@
       "BC7": "hardware"
     },
     "bc_fallback_shaders": true,
-
     "render_modes": {
       "gmem_rendering": true,
       "sysmem_rendering": true
     }
   },
-
   "vulkan_extensions": {
     "core": ["VK_VERSION_1_3"],
     "device": [
@@ -75,7 +68,6 @@
       "VK_EXT_memory_budget"
     ]
   },
-
   "profiles": {
     "xclipse_940": {
       "compute_units": 12,
@@ -100,7 +92,6 @@
       }
     }
   },
-
   "layers": {
     "icd": "usr/share/vulkan/icd.d/xeno_wrapper.json",
     "implicit": [
@@ -110,7 +101,6 @@
       "usr/share/vulkan/explicit_layer.d/xclipse_debughud.json"
     ]
   },
-
   "notes": {
     "bc_texture_formats": "Most BCn formats supported; fallback shaders included.",
     "primitive_shaders": "NGG-like path enabled where available.",
