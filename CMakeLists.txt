@@ -1,19 +1,30 @@
 cmake_minimum_required(VERSION 3.10)
-project(xeno_vulkan_wrapper C)
+project(xeno_wrapper C)
 
-# Build a shared library named exactly libvulkan.xeno_wrapper.so
-add_library(vulkan_xeno_wrapper SHARED
+set(CMAKE_C_STANDARD 11)
+set(CMAKE_POSITION_INDEPENDENT_CODE ON)
+set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -fPIC -Wall -Wno-unused-parameter")
+
+# We will produce a library named libvulkan.xeno_wrapper.so (Eden expected prefix)
+set(LIB_NAME vulkan.xeno_wrapper)
+
+add_library(${LIB_NAME} SHARED
     src/vulkan_wrapper.c
     src/feature_dump.c
 )
 
-# We want the .so file to be called libvulkan.xeno_wrapper.so
-set_target_properties(vulkan_xeno_wrapper PROPERTIES
-    OUTPUT_NAME "vulkan.xeno_wrapper"
+# Link with dl for dlsym, pthread for thread-safety (logging)
+find_library(LIB_DL dl REQUIRED)
+find_package(Threads REQUIRED)
+
+target_link_libraries(${LIB_NAME} PRIVATE ${LIB_DL} Threads::Threads)
+
+# Set the SONAME to match library file
+set_target_properties(${LIB_NAME} PROPERTIES
+    OUTPUT_NAME "libvulkan.xeno_wrapper"
+    PREFIX ""
 )
 
-# Ensure PIC and proper flags
-target_compile_options(vulkan_xeno_wrapper PRIVATE -fPIC -O2 -Wall)
-target_include_directories(vulkan_xeno_wrapper PRIVATE include)
-
-# For Android build flavours you may need: set(ANDROID TRUE) and configure toolchain externally
+# Install path for packaging into the wrapper zip (not used by CI directly).
+install(TARGETS ${LIB_NAME}
+        LIBRARY DESTINATION lib/arm64-v8a)
