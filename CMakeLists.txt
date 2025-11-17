@@ -1,30 +1,36 @@
 cmake_minimum_required(VERSION 3.10)
 project(xeno_wrapper C)
 
-set(CMAKE_C_STANDARD 11)
+# Ensure position independent code for shared library
 set(CMAKE_POSITION_INDEPENDENT_CODE ON)
-set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -fPIC -Wall -Wno-unused-parameter")
 
-# We will produce a library named libvulkan.xeno_wrapper.so (Eden expected prefix)
-set(LIB_NAME vulkan.xeno_wrapper)
+# Provide an option to control ABI if CI sets it
+if(NOT ANDROID_ABI)
+  set(ANDROID_ABI "arm64-v8a" CACHE STRING "Target Android ABI")
+endif()
 
-add_library(${LIB_NAME} SHARED
+# Include directories
+include_directories(${CMAKE_SOURCE_DIR}/include)
+
+# Source files (explicit)
+set(SRC_FILES
     src/vulkan_wrapper.c
     src/feature_dump.c
+    src/feature_dump_generator.c
 )
 
-# Link with dl for dlsym, pthread for thread-safety (logging)
-find_library(LIB_DL dl REQUIRED)
-find_package(Threads REQUIRED)
+# Output name must be libvulkan.xeno_wrapper.so (Eden expects libvulkan.* prefix)
+add_library(vulkan.xeno_wrapper SHARED ${SRC_FILES})
 
-target_link_libraries(${LIB_NAME} PRIVATE ${LIB_DL} Threads::Threads)
-
-# Set the SONAME to match library file
-set_target_properties(${LIB_NAME} PROPERTIES
-    OUTPUT_NAME "libvulkan.xeno_wrapper"
-    PREFIX ""
+# Set the soname / output library name to libvulkan.xeno_wrapper.so
+set_target_properties(vulkan.xeno_wrapper PROPERTIES
+    OUTPUT_NAME "vulkan.xeno_wrapper"
+    PREFIX "lib"
 )
 
-# Install path for packaging into the wrapper zip (not used by CI directly).
-install(TARGETS ${LIB_NAME}
-        LIBRARY DESTINATION lib/arm64-v8a)
+# Compile flags: keep conservative for cross-compile
+target_compile_options(vulkan.xeno_wrapper PRIVATE -Wall -Wextra)
+target_compile_features(vulkan.xeno_wrapper PRIVATE c_std_11)
+
+# When building for Android NDK, typical toolchain will provide necessary flags.
+# No external libraries required; linking is minimal.
