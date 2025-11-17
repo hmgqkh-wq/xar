@@ -1,25 +1,15 @@
-cmake_minimum_required(VERSION 3.16)
-project(xclipse_wrapper C)
+cmake_minimum_required(VERSION 3.10)
+project(xclipse_forward_wrapper C)
 
 set(CMAKE_C_STANDARD 11)
+set(CMAKE_POSITION_INDEPENDENT_CODE ON)
 
-add_compile_definitions(
-    XCLIPSE_ENABLE_LOGGING
-    XCLIPSE_ENABLE_FEATURE_DUMP
-    XCLIPSE_ENABLE_PIPELINE_VALIDATION
-    XCLIPSE_ENABLE_BC_FALLBACK
-)
+add_compile_definitions(_GNU_SOURCE)
 
-include_directories(include)
+include_directories(${CMAKE_SOURCE_DIR}/include)
 
-# Wrapper library (the Vulkan layer replacement)
-add_library(xeno_wrapper SHARED
-    src/xeno_wrapper.c
-)
+add_library(vulkan_wrapper SHARED src/forward_wrapper.c)
+set_target_properties(vulkan_wrapper PROPERTIES OUTPUT_NAME "libvulkan")
 
-# Feature dump tool (runs on device or in action)
-add_executable(xclipse_feature_dump_generator
-    src/xeno_feature_dump_generator.c
-)
-
-target_link_libraries(xclipse_feature_dump_generator m pthread)
+find_package(Threads REQUIRED)
+target_link_libraries(vulkan_wrapper m dl pthread)
