@@ -2,7 +2,7 @@
   "name": "xclipse-940",
   "driver": "libxeno_wrapper.so",
   "entrypoint": "xeno_init",
-  "target": "vulkan1.4",
+  "target": "vulkan1.3",
   "features": {
     "spirv_embedded": true,
     "pipeline_cache": true,
@@ -62,7 +62,7 @@
   },
 
   "vulkan_extensions": {
-    "core": ["VK_VERSION_1_4"],
+    "core": ["VK_VERSION_1_3"],
     "device": [
       "VK_KHR_acceleration_structure",
       "VK_KHR_ray_tracing_pipeline",
