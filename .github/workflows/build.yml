@@ -9,7 +9,7 @@ jobs:
 
     steps:
       - name: Checkout
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
 
       - name: Install Android NDK
         run: |
@@ -28,7 +28,7 @@ jobs:
         run: |
           cmake --build build --config Release
 
-      - name: Prepare Output
+      - name: Prepare Output Structure
         run: |
           mkdir -p output/build/usr/share/vulkan/icd.d
           mkdir -p output/build/usr/share/vulkan/implicit_layer.d
@@ -39,8 +39,8 @@ jobs:
           cp usr/share/vulkan/implicit_layer.d/xeno_layer.json output/build/usr/share/vulkan/implicit_layer.d/
           cp usr/share/vulkan/explicit_layer.d/xeno_explicit.json output/build/usr/share/vulkan/explicit_layer.d/
 
-      - name: Upload ZIP
-        uses: actions/upload-artifact@v3
+      - name: Upload ZIP Artifact
+        uses: actions/upload-artifact@v5
         with:
           name: xclipse_wrapper
           path: output
