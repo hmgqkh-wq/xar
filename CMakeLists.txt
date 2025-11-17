@@ -8,7 +8,12 @@ add_compile_definitions(_GNU_SOURCE)
 
 include_directories(${CMAKE_SOURCE_DIR}/include)
 
-add_library(xeno_wrapper SHARED src/vulkan_wrapper.c src/feature_dump.c)
+add_library(xeno_wrapper SHARED
+    src/vulkan_wrapper.c
+    src/feature_dump.c
+    src/feature_dump_generator.c
+)
+
 set_target_properties(xeno_wrapper PROPERTIES OUTPUT_NAME "libxeno_wrapper")
 
 find_package(Threads REQUIRED)
