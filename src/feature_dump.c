@@ -1,6 +1,6 @@
 #include <stdio.h>
 
-int main_feature_dump(void) {
-    printf("feature dump placeholder\n");
+int dump_basic_features(void) {
+    printf("placeholder: dump_basic_features\n");
     return 0;
 }
