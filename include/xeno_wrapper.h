@@ -1,4 +1,7 @@
 #ifndef XENOWRAPPER_H
 #define XENOWRAPPER_H
-void xeno_init(void); /* optional future hook */
-#endif
+
+/* extern entrypoint expected by Eden/Winlator */
+void xeno_init(void);
+
+#endif /* XENOWRAPPER_H */
