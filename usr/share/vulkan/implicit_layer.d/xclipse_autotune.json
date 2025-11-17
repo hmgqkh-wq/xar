@@ -1,0 +1,11 @@
+{
+  "file_format_version": "1.0.0",
+  "comment": "Xclipse autotune implicit layer (simple placeholder)",
+  "layer": {
+    "name": "VK_LAYER_XCIPSE_autotune",
+    "type": "GLOBAL",
+    "library_path": "libvulkan.xeno_wrapper.so",
+    "api_version": "1.3.0",
+    "implementation_version": "1"
+  }
+}
