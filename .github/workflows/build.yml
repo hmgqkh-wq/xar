@@ -34,11 +34,11 @@ jobs:
       run: |
         cmake --build build --parallel
 
-    # Create correct wrapper ZIP output
+    # Collect output - FIXED NAME: liblibxeno_wrapper.so
     - name: Collect Wrapper Output
       run: |
         mkdir -p output_bundle/lib/arm64-v8a
-        cp build/libxeno_wrapper.so output_bundle/lib/arm64-v8a/libvulkan.xeno_wrapper.so
+        cp build/liblibxeno_wrapper.so output_bundle/lib/arm64-v8a/libvulkan.xeno_wrapper.so
         cp manifest.json output_bundle/
 
         cd output_bundle
