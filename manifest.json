@@ -1,6 +1,8 @@
 {
   "name": "xclipse-940",
-  "driver": "libvulkan.xeno_wrapper.so",
+  "version": "1.0",
+  "vendor": "xeno",
+  "driver": "vulkan/lib/arm64-v8a/libvulkan.xeno_wrapper.so",
   "entrypoint": "xeno_init",
   "target": "vulkan1.3",
   "features": {
@@ -12,17 +14,16 @@
     "ray_tracing": false,
     "mesh_shading": true,
     "variable_rate_shading": true,
-    "primitive_shaders": false,
+    "primitive_shaders": true,
     "descriptor_indexing": true,
     "buffer_device_address": true,
     "timeline_semaphores": true,
     "dynamic_rendering": true,
     "robust_buffer_access": true,
     "pipeline_library": true,
-    "shader_object": false,
+    "shader_object": true,
     "subgroup_operations": true,
     "pipeline_executable_properties": true,
-    "shader_demote_to_helper": true,
     "shader_atomic_int64": true,
     "shader_float16_int8": true,
     "dual_issue_fp32_fp16": true,
@@ -36,7 +37,7 @@
     "multi_queue_async": true,
     "opengl_es_3_2": true,
     "opencl_compute": true,
-    "directx12_layer": false,
+    "directx12_layer": true,
     "bc_texture_formats": {
       "BC1": "hardware",
       "BC2": "hardware",
@@ -58,56 +59,26 @@
       "VK_EXT_descriptor_indexing",
       "VK_KHR_buffer_device_address",
       "VK_KHR_timeline_semaphore",
-      "VK_KHR_maintenance4",
+      "VK_KHR_dynamic_rendering",
       "VK_EXT_mesh_shader",
+      "VK_KHR_maintenance5",
       "VK_KHR_shader_float16_int8",
       "VK_EXT_shader_demote_to_helper_invocation",
       "VK_KHR_pipeline_library",
       "VK_KHR_pipeline_executable_properties",
       "VK_EXT_vertex_input_dynamic_state",
       "VK_EXT_extended_dynamic_state3",
+      "VK_EXT_shader_object",
       "VK_EXT_shader_atomic_float",
       "VK_KHR_synchronization2",
       "VK_EXT_memory_budget"
     ]
   },
-  "profiles": {
-    "xclipse_940": {
-      "compute_units": 12,
-      "shader_units": 768,
-      "rt_cores": 0,
-      "subgroup_size": [32, 64],
-      "fp16_flops": "3.6 TFLOPS",
-      "fp32_flops": "1.8 TFLOPS",
-      "defaults": {
-        "mesh_shading": {
-          "max_meshlets_per_draw": 256,
-          "task_ring_size_kb": 512
-        },
-        "vrs": {
-          "default_rate": "2x2",
-          "per_title_exceptions": true
-        },
-        "stability": {
-          "robust_buffer_access": true,
-          "synchronization2": true
-        }
-      }
-    }
-  },
   "layers": {
-    "icd": "usr/share/vulkan/icd.d/xeno_wrapper.json",
-    "implicit": [
-      "usr/share/vulkan/implicit_layer.d/xclipse_autotune.json"
-    ],
-    "explicit": [
-      "usr/share/vulkan/explicit_layer.d/xclipse_debughud.json"
-    ]
+    "implicit": ["usr/share/vulkan/implicit_layer.d/xeno_wrapper.json"]
   },
   "notes": {
-    "bc_texture_formats": "BCn hardware supported on Xclipse 940. Fallback shaders included.",
-    "primitive_shaders": "NGG path enabled where applicable.",
-    "delta_color_compression": "Enabled for bandwidth savings.",
-    "sampler_feedback": "Allows texture streaming/residency tracking."
+    "description": "Xclipse 940 wrapper package. Contains implicit layer forcing loader to load wrapper for logging/feature dump.",
+    "manifest_source": "user-provided; final behavior depends on wrapper binary."
   }
 }
