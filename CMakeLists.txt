@@ -1,26 +1,38 @@
 cmake_minimum_required(VERSION 3.10)
+
 project(xeno_wrapper C)
 
-set(CMAKE_C_STANDARD 17)
-set(CMAKE_C_STANDARD_REQUIRED ON)
+set(CMAKE_C_STANDARD 11)
 
-# Build shared library without "lib" prefix
-set(CMAKE_SHARED_LIBRARY_PREFIX "")
-set(CMAKE_SHARED_LIBRARY_SUFFIX ".so")
+# Enable verbose output
+set(CMAKE_VERBOSE_MAKEFILE ON)
 
-# Android ABI
-if(NOT DEFINED ANDROID_PLATFORM)
-    set(ANDROID_PLATFORM android-23)
+# Ensure position-independent code for shared library
+set(CMAKE_POSITION_INDEPENDENT_CODE ON)
+
+# Android NDK toolchain location injected by GitHub Actions
+if(DEFINED ENV{ANDROID_NDK_HOME})
+    set(ANDROID_NDK "$ENV{ANDROID_NDK_HOME}")
+else()
+    message(FATAL_ERROR "ANDROID_NDK_HOME environment variable not set.")
 endif()
 
-message(STATUS "Building for Android: ABI=${ANDROID_ABI} PLATFORM=${ANDROID_PLATFORM}")
+# Use the Android toolchain definition
+set(CMAKE_TOOLCHAIN_FILE "${ANDROID_NDK}/build/cmake/android.toolchain.cmake")
 
-add_library(xeno_wrapper SHARED
+# Target Android ABI and platform
+set(ANDROID_ABI "arm64-v8a")
+set(ANDROID_PLATFORM "android-23")
+
+add_library(libxeno_wrapper SHARED
     src/vulkan_wrapper.c
     src/feature_dump.c
+    src/feature_dump_generator.c
 )
 
-target_link_libraries(xeno_wrapper
+# Libraries required for linking
+target_link_libraries(libxeno_wrapper
     log
-    android
+    m
+    atomic
 )
