@@ -1,9 +1,8 @@
-name: build
+name: Build Xclipse Wrapper (Android arm64)
 
 on:
   push:
-    branches:
-      - main
+    branches: [ "main" ]
   workflow_dispatch:
 
 jobs:
@@ -11,7 +10,7 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      - name: Checkout repository
+      - name: Checkout
         uses: actions/checkout@v4
 
       - name: Install system build tools
@@ -36,20 +35,26 @@ jobs:
           cmake -S . -B build \
             -DANDROID_ABI=arm64-v8a \
             -DANDROID_PLATFORM=23 \
-            -DCMAKE_TOOLCHAIN_FILE="$ANDROID_NDK/build/cmake/android.toolchain.cmake"
+            -DCMAKE_TOOLCHAIN_FILE="$ANDROID_NDK/build/cmake/android.toolchain.cmake" \
+            -G Ninja
 
-      - name: Build Project
+      - name: Build library
         run: cmake --build build --parallel
 
-      - name: Collect Wrapper Output
+      - name: Collect wrapper output
         run: |
-          echo "[INFO] Preparing output bundle..."
+          echo "[INFO] preparing output bundle"
           mkdir -p output_bundle/lib/arm64-v8a
 
-          if [ -f build/libxeno_wrapper.so ]; then
-            cp build/libxeno_wrapper.so output_bundle/lib/arm64-v8a/libvulkan.xeno_wrapper.so
+          # expected shared object name produced by CMake: libvulkan.xeno_wrapper.so
+          if [ -f build/libvulkan.xeno_wrapper.so ]; then
+            cp build/libvulkan.xeno_wrapper.so output_bundle/lib/arm64-v8a/libvulkan.xeno_wrapper.so
+          elif [ -f build/vulkan.xeno_wrapper.so ]; then
+            cp build/vulkan.xeno_wrapper.so output_bundle/lib/arm64-v8a/libvulkan.xeno_wrapper.so
+          elif [ -f build/x86_64/libvulkan.xeno_wrapper.so ]; then
+            cp build/x86_64/libvulkan.xeno_wrapper.so output_bundle/lib/arm64-v8a/libvulkan.xeno_wrapper.so
           else
-            echo "ERROR: build/libxeno_wrapper.so not found. Listing build/ for debugging:"
+            echo "ERROR: shared library not found in build/ (listing build/):"
             ls -la build || true
             exit 1
           fi
@@ -57,15 +62,14 @@ jobs:
           if [ -f manifest.json ]; then
             cp manifest.json output_bundle/manifest.json
           else
-            echo "ERROR: manifest.json missing in repo root"
-            ls -la
+            echo "ERROR: manifest.json not found in repo root"
             exit 1
           fi
 
           cd output_bundle
           zip -r ../xclipse_wrapper.zip .
 
-      - name: Upload Wrapper Artifact
+      - name: Upload artifact
         uses: actions/upload-artifact@v4
         with:
           name: xclipse_wrapper_output
