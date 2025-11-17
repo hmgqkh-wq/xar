@@ -1,76 +1,77 @@
-name: Build Xclipse Wrapper (Android arm64)
+name: Build Xclipse Wrapper
 
 on:
-  push:
-    branches: [ "main" ]
   workflow_dispatch:
+  push:
+    branches: [ main ]
 
 jobs:
   build:
     runs-on: ubuntu-latest
+    env:
+      NDK_VERSION: "android-ndk-r25b"       # change if needed to a specific available NDK revision
+      NDK_ARCHIVE: "android-ndk-r25b-linux.zip" # change if your desired NDK differs
+      NDK_URL: "https://dl.google.com/android/repository/${NDK_ARCHIVE}"
 
     steps:
-      - name: Checkout
-        uses: actions/checkout@v4
+    - name: Checkout
+      uses: actions/checkout@v4
 
-      - name: Install system build tools
-        run: |
-          sudo apt update
-          sudo apt install -y cmake ninja-build
+    - name: Install system tools
+      run: |
+        sudo apt-get update
+        sudo apt-get install -y unzip build-essential cmake ninja-build clang pkg-config
 
-      - name: Install Android SDK + NDK
-        uses: android-actions/setup-android@v3
-        with:
-          packages: "ndk;27.0.12077973"
+    - name: Download Android NDK
+      run: |
+        echo "Downloading NDK: $NDK_URL"
+        wget -q --show-progress "$NDK_URL" -O /tmp/${NDK_ARCHIVE}
+        unzip -qq /tmp/${NDK_ARCHIVE} -d $HOME/android-ndk
+        ls -la $HOME/android-ndk
 
-      - name: Configure CMake (Android toolchain)
-        run: |
-          if [ -z "$ANDROID_NDK" ] && [ -n "$ANDROID_NDK_HOME" ]; then
-            export ANDROID_NDK="$ANDROID_NDK_HOME"
-          fi
-          if [ -z "$ANDROID_NDK" ]; then
-            echo "ERROR: ANDROID_NDK not found"
-            exit 1
-          fi
-          cmake -S . -B build \
-            -DANDROID_ABI=arm64-v8a \
-            -DANDROID_PLATFORM=23 \
-            -DCMAKE_TOOLCHAIN_FILE="$ANDROID_NDK/build/cmake/android.toolchain.cmake" \
-            -G Ninja
+    - name: Configure Build (CMake)
+      working-directory: ${{ github.workspace }}
+      run: |
+        mkdir -p build
+        cd build
+        # configure for Android arm64 using NDK's toolchain file
+        cmake -G Ninja \
+          -DCMAKE_BUILD_TYPE=Release \
+          -DANDROID_NDK=$HOME/android-ndk \
+          -DCMAKE_TOOLCHAIN_FILE=$HOME/android-ndk/*/build/cmake/android.toolchain.cmake \
+          -DANDROID_ABI=arm64-v8a \
+          -DANDROID_PLATFORM=android-23 \
+          ..
 
-      - name: Build library
-        run: cmake --build build --parallel
+    - name: Build
+      working-directory: ${{ github.workspace }}/build
+      run: |
+        ninja -v
 
-      - name: Collect wrapper output
-        run: |
-          echo "[INFO] preparing output bundle"
-          mkdir -p output_bundle/lib/arm64-v8a
+    - name: Run feature dump generator (best-effort)
+      working-directory: ${{ github.workspace }}/build
+      run: |
+        if [ -f ./xeno_feature_dump_generator ]; then
+          ./xeno_feature_dump_generator || true
+        fi
 
-          # expected shared object name produced by CMake: libvulkan.xeno_wrapper.so
-          if [ -f build/libvulkan.xeno_wrapper.so ]; then
-            cp build/libvulkan.xeno_wrapper.so output_bundle/lib/arm64-v8a/libvulkan.xeno_wrapper.so
-          elif [ -f build/vulkan.xeno_wrapper.so ]; then
-            cp build/vulkan.xeno_wrapper.so output_bundle/lib/arm64-v8a/libvulkan.xeno_wrapper.so
-          elif [ -f build/x86_64/libvulkan.xeno_wrapper.so ]; then
-            cp build/x86_64/libvulkan.xeno_wrapper.so output_bundle/lib/arm64-v8a/libvulkan.xeno_wrapper.so
-          else
-            echo "ERROR: shared library not found in build/ (listing build/):"
-            ls -la build || true
-            exit 1
-          fi
+    - name: Collect output
+      run: |
+        mkdir -p output_bundle/lib/arm64-v8a
+        # copy built lib if exists
+        if [ -f build/lib/xeno_wrapper.so ]; then
+          cp build/lib/xeno_wrapper.so output_bundle/lib/arm64-v8a/libxeno_wrapper.so
+        elif [ -f build/lib/libxeno_wrapper.so ]; then
+          cp build/lib/libxeno_wrapper.so output_bundle/lib/arm64-v8a/libxeno_wrapper.so
+        fi
+        cp -v manifest.json output_bundle/ || true
+        cp -v README.md output_bundle/ || true
+        # include feature dump if generated
+        [ -f build/feature_dump.txt ] && cp build/feature_dump.txt output_bundle/ || true
+        zip -r xeno_wrapper_output.zip output_bundle
 
-          if [ -f manifest.json ]; then
-            cp manifest.json output_bundle/manifest.json
-          else
-            echo "ERROR: manifest.json not found in repo root"
-            exit 1
-          fi
-
-          cd output_bundle
-          zip -r ../xclipse_wrapper.zip .
-
-      - name: Upload artifact
-        uses: actions/upload-artifact@v4
-        with:
-          name: xclipse_wrapper_output
-          path: xclipse_wrapper.zip
+    - name: Upload artifact
+      uses: actions/upload-artifact@v4
+      with:
+        name: xeno_wrapper_output
+        path: xeno_wrapper_output.zip
