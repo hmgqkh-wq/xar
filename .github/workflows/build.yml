@@ -8,66 +8,64 @@ on:
 jobs:
   build:
     runs-on: ubuntu-latest
-    env:
-      ANDROID_SDK_ROOT: ${{ runner.tool_cache }}/android-sdk
-      NDK_VERSION: "27.3.13750274"   # adjust if needed
 
     steps:
-      - name: Checkout repository
+      - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Install system deps
+      - name: Install dependencies
         run: |
           sudo apt-get update
-          sudo apt-get install -y unzip openjdk-11-jdk cmake ninja build-essential
+          sudo apt-get install -y wget unzip openjdk-17-jdk cmake ninja-build build-essential
 
-      - name: Install Android SDK commandline tools
+      - name: Install Android SDK + NDK
         run: |
-          mkdir -p "${ANDROID_SDK_ROOT}"
-          cd "${ANDROID_SDK_ROOT}"
-          # download commandline tools
-          curl -sSfL "https://dl.google.com/android/repository/commandlinetools-linux-9477386_latest.zip" -o cmdline.zip
+          mkdir -p $HOME/android-sdk
+          cd $HOME/android-sdk
+
+          # Download commandline tools
+          wget -q https://dl.google.com/android/repository/commandlinetools-linux-9477386_latest.zip -O cmdline.zip
           unzip -q cmdline.zip -d cmdline-tools
           mkdir -p cmdline-tools/latest
-          mv cmdline-tools/* cmdline-tools/latest || true
-          yes | "${ANDROID_SDK_ROOT}/cmdline-tools/latest/bin/sdkmanager" --sdk_root="${ANDROID_SDK_ROOT}" "platform-tools" "platforms;android-33" "ndk;${NDK_VERSION}" >/dev/null
+          mv cmdline-tools/* cmdline-tools/latest/ || true
 
-      - name: Configure CMake (Android toolchain)
+          export ANDROID_SDK_ROOT=$HOME/android-sdk
+          export PATH=$ANDROID_SDK_ROOT/cmdline-tools/latest/bin:$PATH
+
+          yes | sdkmanager --sdk_root=$ANDROID_SDK_ROOT "platform-tools" "platforms;android-33" "ndk;27.3.13750274"
+
+      - name: Configure CMake
         run: |
+          export ANDROID_SDK_ROOT=$HOME/android-sdk
+          export ANDROID_NDK_HOME=$ANDROID_SDK_ROOT/ndk/27.3.13750274
+
           mkdir -p build
           cd build
-          cmake .. -DCMAKE_TOOLCHAIN_FILE="${ANDROID_SDK_ROOT}/ndk/${NDK_VERSION}/build/cmake/android.toolchain.cmake" -DANDROID_ABI=arm64-v8a -DANDROID_PLATFORM=android-23 -DCMAKE_BUILD_TYPE=Release
+
+          cmake .. \
+            -DCMAKE_TOOLCHAIN_FILE=$ANDROID_NDK_HOME/build/cmake/android.toolchain.cmake \
+            -DANDROID_ABI=arm64-v8a \
+            -DANDROID_PLATFORM=android-23 \
+            -DCMAKE_BUILD_TYPE=Release
 
       - name: Build
         run: |
           cd build
-          cmake --build . --config Release -- -j$(nproc)
+          cmake --build . --config Release -- -j4
 
-      - name: Prepare Output Structure
+      - name: Prepare Output Bundle
         run: |
-          rm -rf output_bundle
           mkdir -p output_bundle/lib/arm64-v8a
-          # The produced library will be at: build/libvulkan.xeno_wrapper.so or similar
-          # Search for produced .so
-          find build -type f -name "libvulkan.xeno_wrapper.so" -print -exec cp {} output_bundle/lib/arm64-v8a/ \;
-          # Fallback: if library name differs, try artifact with prefix "libvulkan."
-          if [ ! -f output_bundle/lib/arm64-v8a/libvulkan.xeno_wrapper.so ]; then
-            find build -type f -name "libvulkan*.so" -print -exec cp {} output_bundle/lib/arm64-v8a/ \;
-          fi
-          # copy manifest and usr folder if present
-          if [ -f manifest.json ]; then
-            cp manifest.json output_bundle/
-          fi
-          if [ -d usr ]; then
-            cp -r usr output_bundle/
-          fi
+          find build -type f -name "libvulkan*.so" -exec cp {} output_bundle/lib/arm64-v8a/ \;
 
-      - name: List output bundle
-        run: |
-          echo "Output tree:"
-          ls -R output_bundle || true
+          # Copy manifest + usr directories
+          [ -f manifest.json ] && cp manifest.json output_bundle/
+          [ -d usr ] && cp -r usr output_bundle/
 
-      - name: Upload ZIP Artifact
+          echo "Bundle structure ready:"
+          ls -R output_bundle
+
+      - name: Upload Artifact
         uses: actions/upload-artifact@v4
         with:
           name: xclipse_wrapper
