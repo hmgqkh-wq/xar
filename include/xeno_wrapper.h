@@ -1,7 +1,4 @@
-#ifndef XENO_WRAPPER_H
-#define XENO_WRAPPER_H
-
-void xeno_init();
-void xeno_shutdown();
-
+#ifndef XENOWRAPPER_H
+#define XENOWRAPPER_H
+void xeno_init(void); /* optional future hook */
 #endif
