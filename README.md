@@ -1,19 +1,21 @@
-This repository builds the Xclipse 940 Vulkan wrapper (balanced mode).
+Xclipse 940 Vulkan Forwarding ICD Wrapper (ARM64)
 
-After building on GitHub Actions, download the artifact ZIP.
-Inside you will find:
+This repository contains only source files and text files.
+There are NO executable files, NO precompiled binaries.
 
-- libxeno_wrapper.so
-- xclipse_feature_dump_generator (test binary)
-- logs (if any generated)
-- manifest.json (copied)
-- feature_dump.txt (if generator produces one)
+Files include:
+- manifest.json
+- CMakeLists.txt
+- src/*.c
+- include/*.h
+- .github/workflows/build.yml
 
-To continue tuning:
-1. Take libxeno_wrapper.so and place inside Winlator driver folder.
-2. Run any Vulkan app in Winlator.
-3. Two files will appear on device:
-   /sdcard/xclipse/xeno_wrapper.log
-   /sdcard/xclipse/xeno_tune_report.json
+Use GitHub Actions to compile the wrapper into libxeno_wrapper.so.
+Then import the generated ZIP into Winlator.
 
-Upload both files to ChatGPT.
+Logs and feature dumps will be written to:
+    /storage/emulated/0/xclipse_output/
+    /sdcard/xclipse_output/
+
+Upload the generated xeno_tune_report.json and xeno_wrapper.log
+to ChatGPT for full tuning of your Xclipse 940 GPU.
