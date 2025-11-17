@@ -2,45 +2,73 @@ name: build
 
 on:
   push:
+    branches: [ main ]
+  workflow_dispatch:
 
 jobs:
   build:
     runs-on: ubuntu-latest
+    env:
+      ANDROID_SDK_ROOT: ${{ runner.tool_cache }}/android-sdk
+      NDK_VERSION: "27.3.13750274"   # adjust if needed
 
     steps:
-      - name: Checkout
+      - name: Checkout repository
         uses: actions/checkout@v4
 
-      - name: Install Android NDK
+      - name: Install system deps
         run: |
-          sudo apt update
-          wget -q https://dl.google.com/android/repository/android-ndk-r25b-linux.zip -O ndk.zip
-          unzip -qq ndk.zip -d $HOME/android-ndk
+          sudo apt-get update
+          sudo apt-get install -y unzip openjdk-11-jdk cmake ninja build-essential
 
-      - name: Configure Build
+      - name: Install Android SDK commandline tools
         run: |
-          cmake -B build -S . \
-            -DCMAKE_TOOLCHAIN_FILE=$HOME/android-ndk/android-ndk-r25b/build/cmake/android.toolchain.cmake \
-            -DANDROID_ABI=arm64-v8a \
-            -DANDROID_PLATFORM=android-29
+          mkdir -p "${ANDROID_SDK_ROOT}"
+          cd "${ANDROID_SDK_ROOT}"
+          # download commandline tools
+          curl -sSfL "https://dl.google.com/android/repository/commandlinetools-linux-9477386_latest.zip" -o cmdline.zip
+          unzip -q cmdline.zip -d cmdline-tools
+          mkdir -p cmdline-tools/latest
+          mv cmdline-tools/* cmdline-tools/latest || true
+          yes | "${ANDROID_SDK_ROOT}/cmdline-tools/latest/bin/sdkmanager" --sdk_root="${ANDROID_SDK_ROOT}" "platform-tools" "platforms;android-33" "ndk;${NDK_VERSION}" >/dev/null
+
+      - name: Configure CMake (Android toolchain)
+        run: |
+          mkdir -p build
+          cd build
+          cmake .. -DCMAKE_TOOLCHAIN_FILE="${ANDROID_SDK_ROOT}/ndk/${NDK_VERSION}/build/cmake/android.toolchain.cmake" -DANDROID_ABI=arm64-v8a -DANDROID_PLATFORM=android-23 -DCMAKE_BUILD_TYPE=Release
 
       - name: Build
         run: |
-          cmake --build build --config Release
+          cd build
+          cmake --build . --config Release -- -j$(nproc)
 
       - name: Prepare Output Structure
         run: |
-          mkdir -p output/build/usr/share/vulkan/icd.d
-          mkdir -p output/build/usr/share/vulkan/implicit_layer.d
-          mkdir -p output/build/usr/share/vulkan/explicit_layer.d
+          rm -rf output_bundle
+          mkdir -p output_bundle/lib/arm64-v8a
+          # The produced library will be at: build/libvulkan.xeno_wrapper.so or similar
+          # Search for produced .so
+          find build -type f -name "libvulkan.xeno_wrapper.so" -print -exec cp {} output_bundle/lib/arm64-v8a/ \;
+          # Fallback: if library name differs, try artifact with prefix "libvulkan."
+          if [ ! -f output_bundle/lib/arm64-v8a/libvulkan.xeno_wrapper.so ]; then
+            find build -type f -name "libvulkan*.so" -print -exec cp {} output_bundle/lib/arm64-v8a/ \;
+          fi
+          # copy manifest and usr folder if present
+          if [ -f manifest.json ]; then
+            cp manifest.json output_bundle/
+          fi
+          if [ -d usr ]; then
+            cp -r usr output_bundle/
+          fi
 
-          cp build/libvulkan.xeno_wrapper.so output/build/
-          cp usr/share/vulkan/icd.d/xeno_icd.json output/build/usr/share/vulkan/icd.d/
-          cp usr/share/vulkan/implicit_layer.d/xeno_layer.json output/build/usr/share/vulkan/implicit_layer.d/
-          cp usr/share/vulkan/explicit_layer.d/xeno_explicit.json output/build/usr/share/vulkan/explicit_layer.d/
+      - name: List output bundle
+        run: |
+          echo "Output tree:"
+          ls -R output_bundle || true
 
       - name: Upload ZIP Artifact
-        uses: actions/upload-artifact@v5
+        uses: actions/upload-artifact@v4
         with:
           name: xclipse_wrapper
-          path: output
+          path: output_bundle
