@@ -1,77 +1,45 @@
-name: Build Xclipse Wrapper
+name: build
 
 on:
-  workflow_dispatch:
   push:
-    branches: [ main ]
+  pull_request:
 
 jobs:
   build:
     runs-on: ubuntu-latest
-    env:
-      NDK_VERSION: "android-ndk-r25b"       # change if needed to a specific available NDK revision
-      NDK_ARCHIVE: "android-ndk-r25b-linux.zip" # change if your desired NDK differs
-      NDK_URL: "https://dl.google.com/android/repository/${NDK_ARCHIVE}"
 
     steps:
-    - name: Checkout
-      uses: actions/checkout@v4
+      - name: Checkout
+        uses: actions/checkout@v4
 
-    - name: Install system tools
-      run: |
-        sudo apt-get update
-        sudo apt-get install -y unzip build-essential cmake ninja-build clang pkg-config
+      - name: Set up Android NDK r25b
+        uses: nttld/setup-ndk@v1
+        with:
+          ndk-version: r25b
+          local-cache: true
 
-    - name: Download Android NDK
-      run: |
-        echo "Downloading NDK: $NDK_URL"
-        wget -q --show-progress "$NDK_URL" -O /tmp/${NDK_ARCHIVE}
-        unzip -qq /tmp/${NDK_ARCHIVE} -d $HOME/android-ndk
-        ls -la $HOME/android-ndk
+      - name: Configure Build (CMake)
+        run: |
+          cmake -B build \
+            -DANDROID_ABI=arm64-v8a \
+            -DANDROID_PLATFORM=android-29 \
+            -DANDROID_NDK=$ANDROID_NDK_HOME \
+            -DCMAKE_TOOLCHAIN_FILE=$ANDROID_NDK_HOME/build/cmake/android.toolchain.cmake
 
-    - name: Configure Build (CMake)
-      working-directory: ${{ github.workspace }}
-      run: |
-        mkdir -p build
-        cd build
-        # configure for Android arm64 using NDK's toolchain file
-        cmake -G Ninja \
-          -DCMAKE_BUILD_TYPE=Release \
-          -DANDROID_NDK=$HOME/android-ndk \
-          -DCMAKE_TOOLCHAIN_FILE=$HOME/android-ndk/*/build/cmake/android.toolchain.cmake \
-          -DANDROID_ABI=arm64-v8a \
-          -DANDROID_PLATFORM=android-23 \
-          ..
+      - name: Build
+        run: cmake --build build --config Release
 
-    - name: Build
-      working-directory: ${{ github.workspace }}/build
-      run: |
-        ninja -v
+      - name: Run feature dump generator (best-effort)
+        continue-on-error: true
+        run: |
+          if [ -f build/feature_dump_generator ]; then
+            ./build/feature_dump_generator > feature_dump.txt
+          fi
 
-    - name: Run feature dump generator (best-effort)
-      working-directory: ${{ github.workspace }}/build
-      run: |
-        if [ -f ./xeno_feature_dump_generator ]; then
-          ./xeno_feature_dump_generator || true
-        fi
-
-    - name: Collect output
-      run: |
-        mkdir -p output_bundle/lib/arm64-v8a
-        # copy built lib if exists
-        if [ -f build/lib/xeno_wrapper.so ]; then
-          cp build/lib/xeno_wrapper.so output_bundle/lib/arm64-v8a/libxeno_wrapper.so
-        elif [ -f build/lib/libxeno_wrapper.so ]; then
-          cp build/lib/libxeno_wrapper.so output_bundle/lib/arm64-v8a/libxeno_wrapper.so
-        fi
-        cp -v manifest.json output_bundle/ || true
-        cp -v README.md output_bundle/ || true
-        # include feature dump if generated
-        [ -f build/feature_dump.txt ] && cp build/feature_dump.txt output_bundle/ || true
-        zip -r xeno_wrapper_output.zip output_bundle
-
-    - name: Upload artifact
-      uses: actions/upload-artifact@v4
-      with:
-        name: xeno_wrapper_output
-        path: xeno_wrapper_output.zip
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: xclipse_wrapper
+          path: |
+            build/*.so
+            feature_dump.txt
