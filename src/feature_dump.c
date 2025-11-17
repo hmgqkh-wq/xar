@@ -1,97 +1,104 @@
+/*
+ * feature_dump.c
+ * Minimal feature-dump generator that writes the JSON manifest (Vulkan 1.3) to the
+ * emulator-accessible locations so Eden can pick it up.
+ *
+ * Writes to:
+ *  - /storage/emulated/0/Android/data/dev.eden.eden_emulator/files/gpu_drivers/
+ *  - /sdcard/Android/data/dev.eden.eden_emulator/files/gpu_drivers/
+ *
+ * If those don't exist, falls back to current directory where possible.
+ */
+
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include <pthread.h>
+#include <sys/stat.h>
+#include <errno.h>
 
-#include <android/log.h>
-
-#define LOG_TAG "XCLIPSE_WRAPPER"
-#define LOGI(...) __android_log_print(ANDROID_LOG_INFO, LOG_TAG, __VA_ARGS__)
-#define LOGE(...) __android_log_print(ANDROID_LOG_ERROR, LOG_TAG, __VA_ARGS__)
-
-/* Eden storage path (always accessible) */
-static const char* LOG_PATH =
-    "/storage/emulated/0/Android/data/dev.eden.eden_emulator/files/xclipse_log.txt";
-
-static FILE* log_file = NULL;
-static pthread_mutex_t log_lock = PTHREAD_MUTEX_INITIALIZER;
-
-/* Open file safely */
-static void init_log_file(void)
+static int mkdir_p(const char *path)
 {
-    pthread_mutex_lock(&log_lock);
+    char tmp[1024];
+    char *p = NULL;
+    size_t len;
 
-    if (log_file == NULL)
-    {
-        log_file = fopen(LOG_PATH, "a");
-
-        if (log_file == NULL)
-        {
-            LOGE("FAILED to open log file: %s", LOG_PATH);
-        }
-        else
-        {
-            LOGI("Log file initialized at: %s", LOG_PATH);
-            fprintf(log_file, "===== XCLIPSE WRAPPER START =====\n");
-            fflush(log_file);
+    snprintf(tmp, sizeof(tmp), "%s", path);
+    len = strlen(tmp);
+    if (len == 0) return -1;
+    if (tmp[len - 1] == '/') tmp[len - 1] = 0;
+    for (p = tmp + 1; *p; p++) {
+        if (*p == '/') {
+            *p = 0;
+            if (mkdir(tmp, 0755) && errno != EEXIST) return -1;
+            *p = '/';
         }
     }
-
-    pthread_mutex_unlock(&log_lock);
+    if (mkdir(tmp, 0755) && errno != EEXIST) return -1;
+    return 0;
 }
 
-/* Public init called from vulkan_wrapper */
-void feature_dump_init(void)
+/* Minimal JSON dump contents (Vulkan 1.3 tailored) */
+static const char *dump_json =
+"{\n"
+"  \"name\": \"xclipse-940\",\n"
+"  \"target\": \"vulkan1.3\",\n"
+"  \"supported\": {\n"
+"    \"spirv_embedded\": true,\n"
+"    \"mesh_shading\": true,\n"
+"    \"variable_rate_shading\": true,\n"
+"    \"descriptor_indexing\": true,\n"
+"    \"buffer_device_address\": true,\n"
+"    \"timeline_semaphores\": true,\n"
+"    \"dynamic_rendering\": true,\n"
+"    \"robust_buffer_access\": true\n"
+"  }\n"
+"}\n";
+
+static int write_file(const char *path, const char *data)
 {
-    init_log_file();
+    FILE *f = fopen(path, "wb");
+    if (!f) return -1;
+    fwrite(data, 1, strlen(data), f);
+    fclose(f);
+    return 0;
 }
 
-/* Thread-safe log write */
-void feature_dump_log(const char* text)
+int produce_feature_dump(const char *outdir_base)
 {
-    if (!text)
-        return;
+    char path[1024];
+    int rc = 0;
 
-    pthread_mutex_lock(&log_lock);
+    if (!outdir_base || strlen(outdir_base) == 0) return -1;
 
-    if (!log_file)
-        init_log_file();
-
-    if (log_file)
-    {
-        fprintf(log_file, "%s\n", text);
-        fflush(log_file);
+    if (mkdir_p(outdir_base) != 0) {
+        /* non-fatal; attempt anyway */
     }
 
-    pthread_mutex_unlock(&log_lock);
-
-    LOGI("%s", text); /* Send to Android logcat too */
+    snprintf(path, sizeof(path), "%s/xclipse_940_feature_dump.json", outdir_base);
+    rc = write_file(path, dump_json);
+    return rc;
 }
 
-/* Log a Vulkan call by name */
-void feature_dump_vk_call(const char* name)
+/* utility tries multiple likely locations for Eden */
+int write_feature_to_eden_locations(void)
 {
-    if (!name)
-        return;
-
-    char buf[256];
-    snprintf(buf, sizeof(buf), "VK CALL: %s", name);
-
-    feature_dump_log(buf);
-}
-
-/* Cleanup */
-void feature_dump_close(void)
-{
-    pthread_mutex_lock(&log_lock);
-
-    if (log_file)
-    {
-        fprintf(log_file, "===== XCLIPSE WRAPPER END =====\n");
-        fflush(log_file);
-        fclose(log_file);
-        log_file = NULL;
+    const char *candidates[] = {
+        "/storage/emulated/0/Android/data/dev.eden.eden_emulator/files/gpu_drivers",
+        "/sdcard/Android/data/dev.eden.eden_emulator/files/gpu_drivers",
+        "/storage/emulated/0/Android/data/dev.eden.eden_emulator/files",
+        "/sdcard/Android/data/dev.eden.eden_emulator/files",
+        "/storage/emulated/0/Android/data/dev.eden.eden_emulator",
+        "/sdcard/Android/data/dev.eden.eden_emulator",
+        NULL
+    };
+    const char **p = candidates;
+    int ok = 0;
+    for (; *p; ++p) {
+        if (produce_feature_dump(*p) == 0) ok = 1;
     }
-
-    pthread_mutex_unlock(&log_lock);
+    if (!ok) {
+        /* fallback to current directory */
+        if (produce_feature_dump("./") == 0) ok = 1;
+    }
+    return ok ? 0 : -1;
 }
