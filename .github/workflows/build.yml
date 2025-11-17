@@ -2,7 +2,6 @@ name: build
 
 on:
   push:
-  pull_request:
 
 jobs:
   build:
@@ -10,36 +9,38 @@ jobs:
 
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v3
 
-      - name: Set up Android NDK r25b
-        uses: nttld/setup-ndk@v1
-        with:
-          ndk-version: r25b
-          local-cache: true
-
-      - name: Configure Build (CMake)
+      - name: Install Android NDK
         run: |
-          cmake -B build \
+          sudo apt update
+          wget -q https://dl.google.com/android/repository/android-ndk-r25b-linux.zip -O ndk.zip
+          unzip -qq ndk.zip -d $HOME/android-ndk
+
+      - name: Configure Build
+        run: |
+          cmake -B build -S . \
+            -DCMAKE_TOOLCHAIN_FILE=$HOME/android-ndk/android-ndk-r25b/build/cmake/android.toolchain.cmake \
             -DANDROID_ABI=arm64-v8a \
-            -DANDROID_PLATFORM=android-29 \
-            -DANDROID_NDK=$ANDROID_NDK_HOME \
-            -DCMAKE_TOOLCHAIN_FILE=$ANDROID_NDK_HOME/build/cmake/android.toolchain.cmake
+            -DANDROID_PLATFORM=android-29
 
       - name: Build
-        run: cmake --build build --config Release
-
-      - name: Run feature dump generator (best-effort)
-        continue-on-error: true
         run: |
-          if [ -f build/feature_dump_generator ]; then
-            ./build/feature_dump_generator > feature_dump.txt
-          fi
+          cmake --build build --config Release
 
-      - name: Upload artifact
-        uses: actions/upload-artifact@v4
+      - name: Prepare Output
+        run: |
+          mkdir -p output/build/usr/share/vulkan/icd.d
+          mkdir -p output/build/usr/share/vulkan/implicit_layer.d
+          mkdir -p output/build/usr/share/vulkan/explicit_layer.d
+
+          cp build/libvulkan.xeno_wrapper.so output/build/
+          cp usr/share/vulkan/icd.d/xeno_icd.json output/build/usr/share/vulkan/icd.d/
+          cp usr/share/vulkan/implicit_layer.d/xeno_layer.json output/build/usr/share/vulkan/implicit_layer.d/
+          cp usr/share/vulkan/explicit_layer.d/xeno_explicit.json output/build/usr/share/vulkan/explicit_layer.d/
+
+      - name: Upload ZIP
+        uses: actions/upload-artifact@v3
         with:
           name: xclipse_wrapper
-          path: |
-            build/*.so
-            feature_dump.txt
+          path: output
