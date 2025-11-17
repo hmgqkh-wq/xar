@@ -1,6 +1,6 @@
 {
   "name": "xclipse-940",
-  "driver": "libxeno_wrapper.so",
+  "driver": "libvulkan.xeno_wrapper.so",
   "entrypoint": "xeno_init",
   "target": "vulkan1.3",
   "features": {
@@ -10,11 +10,10 @@
     "auto_tuning": true,
     "hud_overlay": true,
 
-    "ray_tracing": true,
+    "ray_tracing": false,
     "mesh_shading": true,
     "variable_rate_shading": true,
     "primitive_shaders": true,
-    "next_gen_geometry": true,
     "shader_execution_reordering": true,
 
     "descriptor_indexing": true,
@@ -23,26 +22,26 @@
     "dynamic_rendering": true,
     "robust_buffer_access": true,
     "pipeline_library": true,
-    "shader_object": true,
+    "shader_object": false,
     "subgroup_operations": true,
     "pipeline_executable_properties": true,
-    "shader_demote_to_helper": true,
-    "shader_atomic_int64": true,
+    "shader_demote_to_helper": false,
+    "shader_atomic_int64": false,
     "shader_float16_int8": true,
-    "dual_issue_fp32_fp16": true,
+    "dual_issue_fp32_fp16": false,
 
     "synchronization2": true,
     "memory_budget": true,
     "delta_color_compression": true,
     "sampler_feedback": true,
-    "sparse_residency": true,
-    "cooperative_matrix": true,
-    "wave_matrix_ops": true,
+    "sparse_residency": false,
+    "cooperative_matrix": false,
+    "wave_matrix_ops": false,
     "multi_queue_async": true,
 
     "opengl_es_3_2": true,
-    "opencl_compute": true,
-    "directx12_layer": true,
+    "opencl_compute": false,
+    "directx12_layer": false,
 
     "bc_texture_formats": {
       "BC1": "hardware",
@@ -64,24 +63,14 @@
   "vulkan_extensions": {
     "core": ["VK_VERSION_1_3"],
     "device": [
-      "VK_KHR_acceleration_structure",
-      "VK_KHR_ray_tracing_pipeline",
-      "VK_KHR_deferred_host_operations",
       "VK_KHR_buffer_device_address",
       "VK_EXT_descriptor_indexing",
       "VK_KHR_timeline_semaphore",
       "VK_KHR_dynamic_rendering",
       "VK_EXT_mesh_shader",
-      "VK_KHR_maintenance5",
       "VK_KHR_shader_float16_int8",
-      "VK_KHR_shader_subgroup_extended_types",
-      "VK_EXT_shader_demote_to_helper_invocation",
       "VK_KHR_pipeline_library",
       "VK_KHR_pipeline_executable_properties",
-      "VK_EXT_vertex_input_dynamic_state",
-      "VK_EXT_extended_dynamic_state3",
-      "VK_EXT_shader_object",
-      "VK_EXT_shader_atomic_float",
       "VK_KHR_synchronization2",
       "VK_EXT_memory_budget"
     ]
@@ -91,16 +80,11 @@
     "xclipse_940": {
       "compute_units": 12,
       "shader_units": 768,
-      "rt_cores": 6,
-      "subgroup_size": [32, 64],
+      "rt_cores": 0,
+      "subgroup_size": [32],
       "fp16_flops": "3.6 TFLOPS",
       "fp32_flops": "1.8 TFLOPS",
       "defaults": {
-        "ray_tracing": {
-          "max_recursion_depth": 2,
-          "max_payload_size": 128,
-          "stack_size_caps": "balanced"
-        },
         "mesh_shading": {
           "max_meshlets_per_draw": 256,
           "task_ring_size_kb": 512
@@ -128,12 +112,10 @@
   },
 
   "notes": {
-    "bc_texture_formats": "All BCn formats are hardware-supported on Xclipse 940 (RDNA 3). Fallback shaders included for safety.",
-    "primitive_shaders": "NGG path enabled for geometry throughput.",
-    "shader_execution_reordering": "Improves ray tracing efficiency by reducing divergence.",
-    "delta_color_compression": "Enabled for bandwidth savings in render targets.",
-    "sampler_feedback": "Allows texture streaming and residency tracking.",
-    "cooperative_matrix": "Exposes ML/upscaler acceleration.",
-    "multi_queue_async": "Graphics and compute overlap enabled for better utilization."
+    "bc_texture_formats": "Most BCn formats supported; fallback shaders included.",
+    "primitive_shaders": "NGG-like path enabled where available.",
+    "delta_color_compression": "Enabled for bandwidth savings.",
+    "sampler_feedback": "Allows texture streaming/residency tracking.",
+    "multi_queue_async": "Graphics & compute overlap enabled."
   }
 }
