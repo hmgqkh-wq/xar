@@ -1,24 +1,19 @@
 cmake_minimum_required(VERSION 3.10)
-project(xclipse_wrapper C)
+project(xeno_vulkan_wrapper C)
 
-set(CMAKE_C_STANDARD 11)
-
-# Android build flags (required for shared library)
-set(CMAKE_POSITION_INDEPENDENT_CODE ON)
-
-# Include headers
-include_directories(${CMAKE_SOURCE_DIR}/include)
-
-# Build Vulkan wrapper shared library
-add_library(xeno_wrapper SHARED
+# Build a shared library named exactly libvulkan.xeno_wrapper.so
+add_library(vulkan_xeno_wrapper SHARED
     src/vulkan_wrapper.c
     src/feature_dump.c
 )
 
-# Link log library (Android)
-target_link_libraries(xeno_wrapper log)
-
-# Output name (libxeno_wrapper.so)
-set_target_properties(xeno_wrapper PROPERTIES
-    OUTPUT_NAME "xeno_wrapper"
+# We want the .so file to be called libvulkan.xeno_wrapper.so
+set_target_properties(vulkan_xeno_wrapper PROPERTIES
+    OUTPUT_NAME "vulkan.xeno_wrapper"
 )
+
+# Ensure PIC and proper flags
+target_compile_options(vulkan_xeno_wrapper PRIVATE -fPIC -O2 -Wall)
+target_include_directories(vulkan_xeno_wrapper PRIVATE include)
+
+# For Android build flavours you may need: set(ANDROID TRUE) and configure toolchain externally
