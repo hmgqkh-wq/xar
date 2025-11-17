@@ -1,14 +1,24 @@
-// src/feature_dump.c
 #include <stdio.h>
-#include <vulkan/vulkan.h>
-#include "xeno_wrapper.h"
+#include <string.h>
+#include "feature_dump.h"
 
-// This simple function can be called by the wrapper at startup or when instance created.
-// For brevity it just writes a small static summary file (already done in constructor).
-// You can expand this to query via vkEnumerate... if you prefer.
-
-void xeno_dump_features_simple(void)
+/* Write a small JSON file with the features we report.
+   This is intentionally small and static to avoid complex Vulkan queries
+   inside CI/build-time. Runtime wrapper can update it if desired. */
+void write_feature_dump(const char *out_path)
 {
-    // Nothing complex here — main wrapper already writes features file at constructor.
-    // Left as placeholder so future code can call it from inside wrappers.
+    FILE *f = fopen(out_path, "w");
+    if (!f) return;
+    fprintf(f, "{\n");
+    fprintf(f, "  \"driver\": \"xeno_wrapper\",\n");
+    fprintf(f, "  \"target\": \"vulkan1.3\",\n");
+    fprintf(f, "  \"features\": {\n");
+    fprintf(f, "    \"spirv_embedded\": true,\n");
+    fprintf(f, "    \"pipeline_cache\": true,\n");
+    fprintf(f, "    \"async_compile\": true,\n");
+    fprintf(f, "    \"auto_tuning\": true,\n");
+    fprintf(f, "    \"hud_overlay\": true\n");
+    fprintf(f, "  }\n");
+    fprintf(f, "}\n");
+    fclose(f);
 }
